@@ -4,6 +4,8 @@ import { Item, Person } from "@/pages/Index";
 import { Table, TableHeader, TableRow, TableHead, TableBody, TableCell } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Copy, CheckCircle } from "lucide-react";
+import { toast } from "@/components/ui/use-toast";
 
 interface BillSummaryProps {
   people: Person[];
@@ -13,6 +15,7 @@ interface BillSummaryProps {
 const BillSummary: React.FC<BillSummaryProps> = ({ people, items }) => {
   const [taxRate, setTaxRate] = useState<number>(0);
   const [showTax, setShowTax] = useState<boolean>(false);
+  const [copied, setCopied] = useState<boolean>(false);
 
   const calculateTotalBill = (): number => {
     return items.reduce((sum, item) => sum + item.price, 0);
@@ -61,6 +64,62 @@ const BillSummary: React.FC<BillSummaryProps> = ({ people, items }) => {
 
   const toggleTax = () => {
     setShowTax(!showTax);
+  };
+
+  const generateBillSummaryText = (): string => {
+    let summary = "BILL SUMMARY\n";
+    summary += "==============\n\n";
+    summary += `Subtotal: ${formatCurrency(calculateTotalBill())} (${getTotalItemCount()} items)\n`;
+    
+    if (showTax) {
+      summary += `Tax Rate: ${taxRate}%\n`;
+      summary += `Total with Tax: ${formatCurrency(calculateTotalWithTax())}\n`;
+    }
+    
+    summary += "\nITEMS:\n";
+    items.forEach(item => {
+      const assignedNames = item.assignedTo.map(id => {
+        const person = people.find(p => p.id === id);
+        return person ? person.name : "Unknown";
+      }).join(", ");
+      
+      summary += `- ${item.name}: ${formatCurrency(item.price)} (${assignedNames})\n`;
+    });
+    
+    summary += "\nPER PERSON:\n";
+    people.forEach(person => {
+      const subtotal = calculatePersonTotal(person.id);
+      summary += `- ${person.name}: ${formatCurrency(subtotal)}`;
+      if (showTax) {
+        summary += ` (with tax: ${formatCurrency(calculatePersonTotalWithTax(person.id))})`;
+      }
+      summary += "\n";
+    });
+    
+    return summary;
+  };
+
+  const copyToClipboard = () => {
+    const billText = generateBillSummaryText();
+    navigator.clipboard.writeText(billText).then(() => {
+      setCopied(true);
+      toast({
+        title: "Success",
+        description: "Bill summary copied to clipboard",
+      });
+      
+      // Reset copied state after a delay
+      setTimeout(() => {
+        setCopied(false);
+      }, 2000);
+    }).catch(err => {
+      toast({
+        title: "Error",
+        description: "Failed to copy bill summary",
+        variant: "destructive",
+      });
+      console.error("Failed to copy bill summary:", err);
+    });
   };
 
   if (people.length === 0 && items.length === 0) {
@@ -149,6 +208,27 @@ const BillSummary: React.FC<BillSummaryProps> = ({ people, items }) => {
           </TableBody>
         </Table>
       )}
+      
+      <div className="mt-4 flex justify-end">
+        <Button 
+          variant="outline" 
+          onClick={copyToClipboard} 
+          className="flex gap-2 items-center"
+          disabled={copied}
+        >
+          {copied ? (
+            <>
+              <CheckCircle className="h-4 w-4" />
+              Copied!
+            </>
+          ) : (
+            <>
+              <Copy className="h-4 w-4" />
+              Copy Bill Summary
+            </>
+          )}
+        </Button>
+      </div>
       
       <div className="mt-4 text-sm text-gray-500">
         <p>Each item is split equally among the people assigned to it.</p>
