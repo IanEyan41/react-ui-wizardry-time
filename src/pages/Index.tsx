@@ -96,6 +96,46 @@ const Index = () => {
     });
   };
 
+  const editItem = (id: string, name: string, price: number, assignedTo: string[]) => {
+    if (!name.trim()) {
+      toast({
+        title: "Error",
+        description: "Please enter an item name",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (isNaN(price) || price <= 0) {
+      toast({
+        title: "Error",
+        description: "Please enter a valid price",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (assignedTo.length === 0) {
+      toast({
+        title: "Error",
+        description: "Please assign this item to at least one person",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setItems(items.map(item => 
+      item.id === id 
+        ? { ...item, name, price, assignedTo } 
+        : item
+    ));
+
+    toast({
+      title: "Success",
+      description: `${name} has been updated`,
+    });
+  };
+
   const removeItem = (id: string) => {
     setItems(items.filter(item => item.id !== id));
   };
@@ -143,6 +183,7 @@ const Index = () => {
                 people={people}
                 onAddItem={addItem}
                 onRemoveItem={removeItem}
+                onEditItem={editItem}
               />
             </CardContent>
           </Card>
